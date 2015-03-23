@@ -1,8 +1,11 @@
 #ifndef _WIND_NUMBERS_H_
 #define _WIND_NUMBERS_H_
 
+#include <cstring>
+#include <iostream>
 #include <list>
 #include <math.h>
+#include <sys/time.h>
 #include "Containers.h"
 
 namespace wind
@@ -12,74 +15,6 @@ class Numbers
 {
 private:
 	typedef std::pair<int, int> NumPair;
-
-	static void PrintPermutations (std::list<wind::Array<int>*> * src)
-	{
-		for (std::list<wind::Array<int>*>::iterator it = src->begin(); it != src->end(); it++)
-		{
-			wind::Array<int> * A = *it;
-			for (int i = 0; i < A->size(); i++)
-			{
-				std::cout << (*A)[i].value() << ",";
-			}
-			std::cout << std::endl;
-		}
-	}
-
-	/*
-	 * GenNextPermutation () - "Worker" function for GetPermutations(). This is used to implement
-	 * the Steinhaus-Johnson-Trotter algorithm.
-	 */
-	static std::list<wind::Array<int>*> * GenNextPermutation (std::list<wind::Array<int>*> * src)
-	{
-		int new_size = src->front()->size() + 1;
-		std::list<wind::Array<int>*> * gen = new std::list<wind::Array<int>*> ();
-		int sign = -1;
-		int c = new_size - 1;
-
-		// For each permutation from
-		// the list of permutations, src
-		// ...
-		for (std::list<wind::Array<int>*>::iterator it = src->begin(); it != src->end(); it++)
-		{
-			wind::Array<int> * A = *it;
-
-			// Construct a new permutation for
-			// where we have a new number
-			// specified by 'new_size - 1'
-			// this number is the 'mover'
-			//
-			//  012  		Notice how 2 moves from right to left
-			//  021       	then left to right
-			//  201
-			//  210
-			//  120
-			//  102
-			//
-			while (c >= 0 && c < new_size)
-			{
-				wind::Array<int> * G = new wind::Array<int> (new_size);
-				(*G)[c] = new_size - 1;
-				for (int i = 0; i < A->size(); i++)
-				{
-					if (i >= c)
-					{
-						(*G)[i + 1] = (*A)[i].value();
-					}
-					else
-					{
-						(*G)[i] = (*A)[i].value();
-					}
-				}
-				gen->push_back(G);
-				c += sign;					// Move the mover
-			}
-			sign = (sign == -1 ? 1 : -1);	// Switch the mover direction
-			c += sign;
-		}
-		PrintPermutations(gen);
-		return gen;
-	}
 
 public:
 	static std::list<int> * GetPrimesTo (int n)
@@ -134,42 +69,157 @@ public:
 		return primes;
 	}
 
-	/*
-	 * GetPermutations (int size) - Gets all permutations of integers 0, 1, ... n using
-	 * to Steinhaus-Johnson-Trotter algorithm. Uses the accompanying private function:
-	 * GenNextPermutation ();
-	 */
-	std::list<wind::Array<int>*> * GetPermutations (int size)
-	{
-		std::list<wind::Array<int>*> * permutations = new std::list<wind::Array<int>*> ();
-		wind::Array<int> * p = new wind::Array<int> (1);
-		(*p)[0] = 0;
-		permutations->push_back(p);
-
-		while (permutations->front()->size() < size)
-		{
-			// Builds up the list of permutations iteratively
-			// starting with a single element array
-			//	0
-			// Then
-			//	01 - 1 moves
-			//	10
-			// Then
-			//  012   210 - 2 moves
-			//  021   120
-			//  201   102
-			// ...
-			permutations = GenNextPermutation(permutations);
-		}
-		return permutations;
-	}
-
 	static unsigned int Factorial (unsigned int n)
 	{
 	    unsigned int ret = 1;
 	    for(unsigned int i = 1; i <= n; ++i)
 	        ret *= i;
 	    return ret;
+	}
+};
+
+/*
+ * Permutations () - Gets all permutations of integers 0, 1, ... n using
+ * to Steinhaus-Johnson-Trotter algorithm. Uses the accompanying private function:
+ * GenNextPermutation ();
+ */
+class Permutations 
+{
+private:
+    void Move (int n, int direction)
+    {
+        int pos_old = NtoP[n];
+        NtoP[n] += direction;
+        int pos_new = NtoP[n];
+        int m = PtoN[pos_new];
+        PtoN[pos_new] = n;
+        NtoP[m] = pos_old;
+        PtoN[pos_old] = m;
+    }
+    void Print (int * arr)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            std::cout << arr[i];
+        }
+        std::cout << std::endl;
+    }
+    
+    void FillGap (int n)
+    {
+        if (n == 0) return;
+        if ((counter[n]+1) % (n+1) == 0)
+        {
+            direction[n] = !direction[n];
+            FillGap (n - 1); 
+        }
+        else
+        {
+            Move (n, (direction[n] == 0 ? -1 : 1));
+        }
+        counter[n]++;
+    }
+    
+    unsigned int Factorial (unsigned int n)
+    {
+        unsigned int ret = 1;
+        for(unsigned int i = 1; i <= n; ++i)
+            ret *= i;
+        return ret;
+    }
+    
+    int size;
+    int result_size;
+
+    int * PtoN; 		// PtoI[position] = number
+    int * NtoP; 		// ItoP[number] = position
+    int * counter;      // progress counter for each number
+    int * direction;    // 0 is left, 1 is right
+    int ** result;
+public:
+    Permutations (int size_)
+    {
+        size = size_;
+        result_size = Factorial (size);
+
+        PtoN = (int*) malloc (sizeof(int) * size);
+        NtoP = (int*) malloc (sizeof(int) * size);
+        counter = (int*) malloc (sizeof(int) * size);
+        direction = (int*) malloc (sizeof(int) * size);
+        result = (int**) malloc (sizeof(int*) * result_size);
+
+        for (int i = 0; i < size; i++)
+        {
+            PtoN[i] = i;
+            NtoP[i] = i;
+        }
+        memset (counter, 0, sizeof(counter));
+        memset (direction, 0, sizeof(direction));
+
+        for (int i = 0; i < result_size; i++)
+        {
+        	result[i] = (int*) malloc (sizeof(int) * size);
+        }
+    }
+    ~Permutations ()
+    {
+        delete PtoN;
+        delete NtoP;
+        delete counter;
+        delete direction;
+    }
+    int ** Get ()
+    {
+    	int i = 0;
+        for (; i < (result_size-1); i++)
+        {
+        	memcpy (result[i], PtoN, sizeof(int) * size);
+            FillGap(size-1);
+        }
+        memcpy (result[i], PtoN, sizeof(int) * size);
+        return result;
+    }
+};
+
+class Timer
+{
+private:
+
+	/*
+	 * 	Return 1 if the result is negative
+	 */
+	int CalcDiff ()
+	{
+		long int diff_ = (stop.tv_usec + 1000000 * stop.tv_sec) - (start.tv_usec + 1000000 * start.tv_sec);
+		diff.tv_sec = diff_ / 1000000;
+		diff.tv_usec = diff_ % 1000000;
+		return (diff_ < 0);
+	}
+	struct timeval start, stop, diff;
+public:
+	Timer ()
+	{
+
+	}
+	void Start ()
+	{
+		gettimeofday(&start, NULL);
+	}
+	void Stop ()
+	{
+		gettimeofday(&stop, NULL);
+		CalcDiff();
+	}
+
+
+	long int GetDurationSeconds ()
+	{
+		return diff.tv_sec;
+	}
+
+	long int GetDurationMicroseconds ()
+	{
+		return diff.tv_usec;
 	}
 };
 
