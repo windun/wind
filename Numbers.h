@@ -1,6 +1,6 @@
 #ifndef _WIND_NUMBERS_H_
 #define _WIND_NUMBERS_H_
-
+#include <cstdlib>		// int rand ()
 #include <cstring>
 #include <iostream>
 #include <list>
@@ -83,16 +83,24 @@ public:
  * to Steinhaus-Johnson-Trotter algorithm. Uses the accompanying private function:
  * GenNextPermutation ();
  */
-class Permutations 
+class PermutationsSJT 
 {
 private:
+	/*
+	 * Move() - this will move array element n
+	 * to the the left (direction == -1) or to
+	 * the right (direction == 1).
+	 *
+	 * NtoP - the array
+	 * PtoN - reverse lookup
+	 */
     void Move (int n, int direction)
     {
-        int pos_old = NtoP[n];
-        NtoP[n] += direction;
+        int pos_old = NtoP[n];  //
+        NtoP[n] += direction;	// update reverse lookup for n
         int pos_new = NtoP[n];
         int m = PtoN[pos_new];
-        PtoN[pos_new] = n;
+        PtoN[pos_new] = n;		//
         NtoP[m] = pos_old;
         PtoN[pos_old] = m;
     }
@@ -131,13 +139,13 @@ private:
     int size;
     int result_size;
 
-    int * PtoN; 		// PtoI[position] = number
-    int * NtoP; 		// ItoP[number] = position
+    int * PtoN; 		// PtoI[position] = number (the array)
+    int * NtoP; 		// ItoP[number] = position (reverse lookup)
     int * counter;      // progress counter for each number
     int * direction;    // 0 is left, 1 is right
     int ** result;
 public:
-    Permutations (int size_)
+    PermutationsSJT (int size_)
     {
         size = size_;
         result_size = Factorial (size);
@@ -161,7 +169,7 @@ public:
         	result[i] = (int*) malloc (sizeof(int) * size);
         }
     }
-    ~Permutations ()
+    ~PermutationsSJT ()
     {
         delete PtoN;
         delete NtoP;
@@ -181,6 +189,27 @@ public:
     }
 };
 
+template class PermutationsW
+{
+private:
+	void NameExclusions (int a, int b)
+	{
+
+	}
+public:
+	PermutationsW ()
+	{
+
+	}
+};
+
+
+/*
+ *	Timer - this class is a wrapper for sys/time.h functionality. Simply create a new timer,
+ *	call Start() to begin timing, then Stop() to finish timing. To get the recorded length
+ *	of time, either call GetDurationSeconds() or GetDurationMicroseconds().
+ *
+ */
 class Timer
 {
 private:
@@ -220,6 +249,64 @@ public:
 	long int GetDurationMicroseconds ()
 	{
 		return diff.tv_usec;
+	}
+};
+
+class Sort
+{
+private:
+	static void qsSwap (int * A, int i, int j)
+	{
+		int tmp = A[i];
+		A[i] = A[j];
+		A[j] = tmp;
+	}
+	static int qsGetPivot (int lo, int hi)
+	{
+		return (rand() % (hi - lo)) + lo;
+	}
+	static int qsPartition (int * A, int lo, int hi)
+	{
+		int pivot_i = qsGetPivot (lo, hi);	// chose a pivot
+		std::cout << "pivot_i = " << pivot_i << std::endl;
+		int pivot_v = A[pivot_i];			//
+		std::cout << "pivot_v = " << pivot_v << std::endl;
+
+		qsSwap (A, pivot_i, hi);			// move pivot to A[hi]
+
+		int store_i = lo;
+
+		for (int i = 0; i < (hi - 1); i++)	// move elements < pivot value
+		{									// to the left side of the
+			if (A[i] < pivot_v)				// array.
+			{
+				qsSwap (A, i, store_i);
+				store_i += 1;
+			}
+		}									// move the pivot into the
+		qsSwap (A, store_i, hi);			// spot where everything to
+		std::cout << "A[" << hi << "] = " << pivot_v << std::endl;
+ 		return store_i;						// the left is less than it
+	}
+public:
+	/*
+	 * QuickSort () - implemented as described in http://en.wikipedia.org/wiki/Quicksort
+	 */
+	static void QuickSort (int * A, int lo, int hi)
+	{
+		std::cout << "A[]=";
+		for (int i = lo; i <= hi; i++)
+		{
+			std::cout << "|" << A[i];
+		}
+		std::cout << std::endl;
+		if (lo < hi)
+		{
+			int p = qsPartition (A, lo, hi);	// everything to the left of the
+												// pivot is now less than it
+			QuickSort (A, lo, p - 1);
+			QuickSort (A, p + 1, hi);
+		}
 	}
 };
 
